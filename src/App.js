@@ -1,46 +1,123 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Trophy, Users, CheckCircle, XCircle } from 'lucide-react';
 
-// --- FEST RESULTS DATA (Parsed from THANAWIYYA.pdf) ---
-// This dataset is a cleaned and structured sample from the provided PDF,
-// mapping 'Chest No' to 'Ad Number' for searchability.
+// --- FEST RESULTS DATA (Provided JSON) ---
 const ALL_RESULTS = [
-  { chestNo: '270', name: 'NIHAL.P', program: 'CRYPTIC CROSSWORD', points: 3, position: '1', team: 'Q', grade: '3' },
-  { chestNo: '276', name: 'SHAMMAS V P', program: 'CRYPTIC CROSSWORD', points: 2, position: '2', team: 'Q', grade: '2' },
-  { chestNo: '272', name: 'MINHAJ P. K.', program: 'CRYPTIC CROSSWORD', points: 1, position: '3', team: 'J', grade: '1' },
-  { chestNo: '267', name: 'RIZWAN', program: 'PROMPT ENGINEERING', points: 3, position: '1', team: 'J', grade: '9' },
-  { chestNo: '148', name: 'SHIDIL', program: 'PROMPT ENGINEERING', points: 6, position: '2', team: 'B', grade: '8' },
-  { chestNo: '225', name: 'SINAN', program: 'PROMPT ENGINEERING', points: 1, position: '3', team: 'Q', grade: '6' },
-  { chestNo: '267', name: 'RIZWAN', program: 'WEB DESIGNING', points: 3, position: '1', team: 'J', grade: '6' },
-  { chestNo: '258', name: 'SABITH', program: 'WEB DESIGNING', points: 2, position: '2', team: 'Q', grade: '5' },
-  { chestNo: '237', name: 'BISHR', program: 'DIGITAL TYPOGRAPHY MLM', points: 8, position: '1', team: 'B', grade: '5' },
-  { chestNo: '225', name: 'SINAN', program: 'DIGITAL TYPOGRAPHY MLM', points: 2, position: '2', team: 'Q', grade: '7' },
-  { chestNo: '209', name: 'JASIR', program: 'SCIENCE MASTER', points: 5, position: '2', team: 'F', grade: '3' },
-  { chestNo: '214', name: 'AJAS V P', program: 'CARTOON', points: 8, position: '1', team: 'F', grade: '3' },
-  { chestNo: '244', name: 'SWALIH P', program: 'CARTOON', points: 5, position: '2', team: 'J', grade: '2' },
-  { chestNo: '270', name: 'NIHAL.P', program: 'EXTEMPORE SPEECH MLM', points: 5, position: '2', team: 'Q', grade: '2' },
-  { chestNo: '234', name: 'SHIFIN T', program: 'INSPIRING TALK ENG', points: 8, position: '1', team: 'B', grade: '3' },
-  { chestNo: '148', name: 'SHIDIL', program: 'MR CRICTIC MLM', points: 8, position: '2', team: 'B', grade: '2' },
-  { chestNo: '214', name: 'AJAS V P', program: 'MR CRICTIC MLM', points: 9, position: '1', team: 'Q', grade: '3' },
-  { chestNo: '270', name: 'NIHAL.P', program: 'GD ENG', points: 7, position: '2', team: 'Q', grade: '2' },
-  { chestNo: '276', name: 'SHAMMAS V P', program: 'SONG COMPOSITION', points: 8, position: '1', team: 'Q', grade: '5' },
-  { chestNo: '276', name: 'SHAMMAS V P', program: 'RAP SONG', points: 8, position: '1', team: 'Q', grade: '5' },
-  { chestNo: '270', name: 'NIHAL.P', program: 'FEATURE ENG', points: 2, position: '2', team: 'Q', grade: '3' },
-  { chestNo: '209', name: 'JASIR', program: 'MAQAMA ARB', points: 1, position: '3', team: 'F', grade: '3' },
-  { chestNo: '273', name: 'MARJAN PA', program: 'MAQALA ARB', points: 3, position: '1', team: 'J', grade: '8' },
+  { "Name of Program": "CRYPTIC CROSSWORD", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 270, "Grade": "", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "CRYPTIC CROSSWORD", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 276, "Grade": "", "Name of Student": "SHAMMAS V P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 2, "Total Points": 4 },
+  { "Name of Program": "CRYPTIC CROSSWORD", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 272, "Grade": "", "Name of Student": "MINHAJ P. K.", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "PROMPT ENGINEERING", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 267, "Grade": "A", "Name of Student": "RIZWAN", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 6, "Total Points": 9 },
+  { "Name of Program": "PROMPT ENGINEERING", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 362, "Grade": "A", "Name of Student": "MINHAJ", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 6, "Total Points": 8 },
+  { "Name of Program": "WEB DESIGNING", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 267, "Grade": "B", "Name of Student": "RIZWAN", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "WEB DESIGNING", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 258, "Grade": "B", "Name of Student": "SABITH", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "WEB DESIGNING", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 269, "Grade": "B", "Name of Student": "ARSHAD", "Team Code": "", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "DIGITAL TYPOGRAPHY MLM", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 248, "Grade": "B", "Name of Student": "HADHI", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "GK TALENT", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 278, "Grade": "B", "Name of Student": "NAFIH", "Team Code": "F", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "GK TALENT", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 265, "Grade": "B", "Name of Student": "ASHRAF ALI", "Team Code": "B", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "GK TALENT", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 270, "Grade": "B", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "SCIENCE MASTER", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 278, "Grade": "B", "Name of Student": "NAFIH", "Team Code": "F", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "SCIENCE MASTER", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 265, "Grade": "B", "Name of Student": "ASHRAF ALI", "Team Code": "B", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "MANIPULATION POSTER DIGIT", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 245, "Grade": "A", "Name of Student": "SINAN", "Team Code": "B", "Class": 6, "Position Point": 1, "Grade Point": 5, "Total Points": 6 },
+  { "Name of Program": "QIRATH", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 244, "Grade": "B", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "QIRATH", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 271, "Grade": "B", "Name of Student": "VAJID C", "Team Code": "F", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "TRANSLATION TRILINGUAL", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 265, "Grade": "", "Name of Student": "ASHRAF ALI", "Team Code": "B", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "CARTOON", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 244, "Grade": "B", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "CARTOON", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 269, "Grade": "B", "Name of Student": "ARSHAD", "Team Code": "B", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "CARTOON", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 260, "Grade": "B", "Name of Student": "IRFAN AP", "Team Code": "B", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "FACE TO FACE ARB", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJANPA &", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 4, "Total Points": 5 },
+  { "Name of Program": "FACE TO FACE URD", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 257, "Grade": "B", "Name of Student": "RIFAHI P & TEAN", "Team Code": "F", "Class": 6, "Position Point": 1, "Grade Point": 4, "Total Points": 5 },
+  { "Name of Program": "TEACHING", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 270, "Grade": "B", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "KAVIYARANG", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 258, "Grade": "", "Name of Student": "SABITH", "Team Code": "Q", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "MULTILINGUAL QUIZ", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "MAQALA MLM", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 248, "Grade": "B", "Name of Student": "HADHI", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "MAQALA MLM", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 271, "Grade": "B", "Name of Student": "VAJID C", "Team Code": "F", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "QISSA QASIRA MLM", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 258, "Grade": "B", "Name of Student": "SABITH", "Team Code": "Q", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "QISSA QASIRA MLM", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 271, "Grade": "B", "Name of Student": "VAJID C", "Team Code": "F", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "QISSA QASIRA MLM", "Section": "THANAWIYYAH", "Position": 5, "Chest Number": 248, "Grade": "B", "Name of Student": "HADHI", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "EXTEMPORE SPEECH MLM", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 270, "Grade": "B", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "INSPIRING TALK ENG", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 267, "Grade": "B", "Name of Student": "RIZWAN", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "INSPIRING TALK ENG", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 272, "Grade": "B", "Name of Student": "MINHAJ P. K.", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "QISSA QASIRA ARB", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 276, "Grade": "", "Name of Student": "SHAMMAS V P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 2, "Total Points": 4 },
+  { "Name of Program": "MR CRICTIC MLM", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 258, "Grade": "A", "Name of Student": "SABITH", "Team Code": "Q", "Class": 6, "Position Point": 1, "Grade Point": 6, "Total Points": 7 },
+  { "Name of Program": "MR CRICTIC MLM", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 244, "Grade": "A", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 6, "Total Points": 6 },
+  { "Name of Program": "MR CRICTIC MLM", "Section": "THANAWIYYAH", "Position": 5, "Chest Number": 271, "Grade": "B", "Name of Student": "VAJID C", "Team Code": "F", "Class": 6, "Position Point": 0, "Grade Point": 4, "Total Points": 4 },
+  { "Name of Program": "MR CRICTIC MLM", "Section": "THANAWIYYAH", "Position": 6, "Chest Number": 248, "Grade": "B", "Name of Student": "HADHI", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 4, "Total Points": 4 },
+  { "Name of Program": "CALLIGRAPHY", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 244, "Grade": "A", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "CALLIGRAPHY", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 269, "Grade": "A", "Name of Student": "ARSHAD", "Team Code": "B", "Class": 6, "Position Point": 2, "Grade Point": 5, "Total Points": 7 },
+  { "Name of Program": "CALLIGRAPHY", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 362, "Grade": "B", "Name of Student": "MINHAJ", "Team Code": "Q", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "ANNOUNCMENT", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 245, "Grade": "B", "Name of Student": "SINAN", "Team Code": "B", "Class": 6, "Position Point": 2, "Grade Point": 2, "Total Points": 4 },
+  { "Name of Program": "ANNOUNCMENT", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 244, "Grade": "B", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "ANNOUNCMENT", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 257, "Grade": "B", "Name of Student": "RIFAHI P", "Team Code": "F", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "ANNOUNCMENT", "Section": "THANAWIYYAH", "Position": 5, "Chest Number": 251, "Grade": "C", "Name of Student": "JALAL", "Team Code": "Q", "Class": 6, "Position Point": -1, "Grade Point": -1, "Total Points": -2 },
+  { "Name of Program": "NASHEED ARB", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 245, "Grade": "B", "Name of Student": "SINAN", "Team Code": "B", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "NASHEED ARB", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 276, "Grade": "B", "Name of Student": "SHAMMAS V P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "NASHEED ARB", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 244, "Grade": "B", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "SONG COMPOSITION & RECIT", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 276, "Grade": "A", "Name of Student": "SHAMMAS V P", "Team Code": "Q", "Class": 6, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "SONG COMPOSITION & RECIT", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 252, "Grade": "B", "Name of Student": "NAEEM", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "GD ENG", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 270, "Grade": "A", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 5, "Total Points": 7 },
+  { "Name of Program": "GD ENG", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 272, "Grade": "B", "Name of Student": "MINHAJ P. K.", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "GD ENG", "Section": "THANAWIYYAH", "Position": 5, "Chest Number": 267, "Grade": "B", "Name of Student": "RIZWAN", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "HIFZ", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "HIFZ", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 253, "Grade": "B", "Name of Student": "LABEEB. T", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "HIFZ", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 271, "Grade": "", "Name of Student": "VAJID C", "Team Code": "F", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "SPEECH URD", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 253, "Grade": "B", "Name of Student": "LABEEB. T", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "ALFIYA CONTEST", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 265, "Grade": "B", "Name of Student": "ASHRAF ALI", "Team Code": "B", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "ALFIYA CONTEST", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "NEWS WRITING ENG", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 272, "Grade": "B", "Name of Student": "MINHAJ P. K.", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "NEWS WRITING ENG", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 270, "Grade": "", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "MAQALA URD", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 249, "Grade": "", "Name of Student": "HISHAM", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "REVERSE QUIZ", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 244, "Grade": "", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 2, "Total Points": 4 },
+  { "Name of Program": "NEWS WRITING URD", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 249, "Grade": "B", "Name of Student": "HISHAM", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "RAP SONG", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 276, "Grade": "A", "Name of Student": "SHAMMAS V P", "Team Code": "Q", "Class": 6, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "RAP SONG", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 259, "Grade": "B", "Name of Student": "JABIR EC", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "RAP SONG", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 252, "Grade": "B", "Name of Student": "NAEEM", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "RAP SONG", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 362, "Grade": "B", "Name of Student": "MINHAJ", "Team Code": "Q", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "RAP SONG", "Section": "THANAWIYYAH", "Position": 5, "Chest Number": 266, "Grade": "B", "Name of Student": "JASEEM", "Team Code": "B", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "DOCUMENTARY NARRATIONE", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 270, "Grade": "B", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 4, "Total Points": 6 },
+  { "Name of Program": "TAHLIL AL-'IBĀRAH", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 253, "Grade": "A", "Name of Student": "LABEEB. T", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "TAHLIL AL-'IBĀRAH", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 273, "Grade": "A", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 5, "Total Points": 7 },
+  { "Name of Program": "TAHLIL AL-'IBĀRAH", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 265, "Grade": "B", "Name of Student": "ASHRAF ALI", "Team Code": "B", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "MAQALA ARB", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 273, "Grade": "A", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "MAQALA ARB", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 253, "Grade": "B", "Name of Student": "LABEEB. T", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "MAQALA ARB", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 245, "Grade": "B", "Name of Student": "SINAN", "Team Code": "B", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "MAQALA ARB", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 269, "Grade": "B", "Name of Student": "ARSHAD", "Team Code": "B", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "QARD AL SHI'R ARB", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 269, "Grade": "B", "Name of Student": "ARSHAD", "Team Code": "B", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "QARD AL SHI'R ARB", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "QISSA QASIRA URD", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 249, "Grade": "B", "Name of Student": "HISHAM", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "QISSA QASIRA URD", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 257, "Grade": "B", "Name of Student": "RIFAHI P", "Team Code": "F", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "QARD AL SHI'R URD", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 249, "Grade": "", "Name of Student": "HISHAM", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 2, "Total Points": 4 },
+  { "Name of Program": "GAZAL", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 252, "Grade": "A", "Name of Student": "NAEEM", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "GAZAL", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 248, "Grade": "", "Name of Student": "HADHI", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "GAZAL", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 260, "Grade": "C", "Name of Student": "IRFAN AP", "Team Code": "B", "Class": 6, "Position Point": -1, "Grade Point": -1, "Total Points": -2 },
+  { "Name of Program": "NEWS WRITING ARB", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "NEWS WRITING ARB", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 253, "Grade": "B", "Name of Student": "LABEEB. T", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "MAQĀMA ARB", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 273, "Grade": "B", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "PROS TO POETRY ENG", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 272, "Grade": "B", "Name of Student": "MINHAJ P. K.", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "PROS TO POETRY ENG", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 276, "Grade": "", "Name of Student": "SHAMMAS V P", "Team Code": "Q", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "FEATURE ENG", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 270, "Grade": "B", "Name of Student": "NIHAL.P", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "QISSA QASIRA ENG", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 253, "Grade": "", "Name of Student": "LABEEB. T", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "SPEECH ARB", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 271, "Grade": "A", "Name of Student": "VAJID C", "Team Code": "F", "Class": 8, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "SPEECH ARB", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 273, "Grade": "A", "Name of Student": "MARJAN PA", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 5, "Total Points": 6 },
+  { "Name of Program": "SPEECH ARB", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 245, "Grade": "B", "Name of Student": "SINAN", "Team Code": "B", "Class": 6, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "HADEES MUSĀBAQA", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 278, "Grade": "", "Name of Student": "NAFIH", "Team Code": "F", "Class": 6, "Position Point": 1, "Grade Point": 1, "Total Points": 2 },
+  { "Name of Program": "TECH TANGLE", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 489, "Grade": "B", "Name of Student": "SANAD", "Team Code": "F", "Class": 6, "Position Point": 2, "Grade Point": 4, "Total Points": 6 },
+  { "Name of Program": "MAQALA ENG", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 267, "Grade": "B", "Name of Student": "RIZWAN", "Team Code": "J", "Class": 6, "Position Point": 3, "Grade Point": 3, "Total Points": 6 },
+  { "Name of Program": "MAQALA ENG", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 258, "Grade": "B", "Name of Student": "SABITH", "Team Code": "Q", "Class": 3, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "MAQALA ENG", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 272, "Grade": "B", "Name of Student": "MINHAJ P. K.", "Team Code": "J", "Class": 6, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "PROS TO POETRY MLM", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 258, "Grade": "A", "Name of Student": "SABITH", "Team Code": "Q", "Class": 6, "Position Point": 2, "Grade Point": 5, "Total Points": 7 },
+  { "Name of Program": "PROS TO POETRY MLM", "Section": "THANAWIYYAH", "Position": 3, "Chest Number": 248, "Grade": "B", "Name of Student": "HADHI", "Team Code": "J", "Class": 4, "Position Point": 1, "Grade Point": 3, "Total Points": 4 },
+  { "Name of Program": "PROS TO POETRY MLM", "Section": "THANAWIYYAH", "Position": 4, "Chest Number": 252, "Grade": "B", "Name of Student": "NAEEM", "Team Code": "J", "Class": 3, "Position Point": 0, "Grade Point": 3, "Total Points": 3 },
+  { "Name of Program": "G D MALAYALAM", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 248, "Grade": "B", "Name of Student": "HADHI", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 },
+  { "Name of Program": "WA'Z", "Section": "THANAWIYYAH", "Position": 1, "Chest Number": 271, "Grade": "A", "Name of Student": "VAJID C", "Team Code": "F", "Class": 8, "Position Point": 3, "Grade Point": 5, "Total Points": 8 },
+  { "Name of Program": "WA'Z", "Section": "THANAWIYYAH", "Position": 2, "Chest Number": 244, "Grade": "B", "Name of Student": "SWALIH P", "Team Code": "J", "Class": 6, "Position Point": 2, "Grade Point": 3, "Total Points": 5 }
 ];
 
 // Map Grade values to colors for visual feedback
 const GRADE_MAP = {
-    '9': 'bg-red-500',
-    '8': 'bg-orange-500',
-    '7': 'bg-yellow-500',
-    '6': 'bg-lime-500',
-    '5': 'bg-green-500',
-    '4': 'bg-teal-500',
-    '3': 'bg-blue-500',
-    '2': 'bg-indigo-500',
-    '1': 'bg-purple-500',
+    'A': 'bg-green-600',
+    'B': 'bg-blue-600',
+    'C': 'bg-red-600',
+    '': 'bg-gray-400', // For empty/unspecified grade
 };
 
 // Component for displaying the student results
@@ -52,17 +129,21 @@ const App = () => {
     const allStudentRanks = useMemo(() => {
         // 1. Group results by student and calculate total points
         const studentTotals = ALL_RESULTS.reduce((acc, result) => {
-            if (!acc[result.chestNo]) {
-                acc[result.chestNo] = {
-                    chestNo: result.chestNo,
-                    name: result.name,
-                    team: result.team,
+            // Use 'Chest Number' as the unique ID/Ad Number
+            const chestNo = String(result['Chest Number']);
+
+            if (!acc[chestNo]) {
+                acc[chestNo] = {
+                    chestNo: chestNo,
+                    name: result['Name of Student'],
+                    team: result['Team Code'],
                     totalPoints: 0,
                     results: [],
                 };
             }
-            acc[result.chestNo].totalPoints += result.points;
-            acc[result.chestNo].results.push(result);
+            // Sum the 'Total Points' from the event results
+            acc[chestNo].totalPoints += result['Total Points'];
+            acc[chestNo].results.push(result);
             return acc;
         }, {});
 
@@ -95,7 +176,8 @@ const App = () => {
 
     // --- Search Functionality ---
     const handleSearch = () => {
-        setSearchTerm(adNumber.trim());
+        // Ensure search term is a string
+        setSearchTerm(String(adNumber).trim());
     };
 
     const handleKeyDown = (e) => {
@@ -128,14 +210,14 @@ const App = () => {
                         Fest Results Portal
                     </h1>
                     <p className="text-gray-500 mt-1">
-                        Search your results by Admission Number (Chest No).
+                        Search your results by **Ad Number** (Chest No).
                     </p>
                 </header>
 
                 {/* Search Input */}
                 <div className="flex space-x-2 mb-8">
                     <input
-                        type="text"
+                        type="number" // Use number type for Ad Number (Chest No)
                         placeholder="Enter Ad Number (e.g., 270)"
                         value={adNumber}
                         onChange={(e) => setAdNumber(e.target.value)}
@@ -170,7 +252,7 @@ const App = () => {
                                 <div className="flex justify-between items-center mb-4 border-b border-indigo-200 pb-3">
                                     <h2 className="text-xl font-bold text-indigo-800 flex items-center">
                                         <Users className="w-5 h-5 mr-2"/>
-                                        {studentName} ({studentTeam})
+                                        {studentName} (<span className='font-mono'>{studentTeam || 'N/A'}</span>)
                                     </h2>
                                     <span className="text-sm font-medium text-indigo-600">
                                         Ad No: **{searchTerm}**
@@ -181,7 +263,7 @@ const App = () => {
                                         <p className="text-3xl font-extrabold text-indigo-600">
                                             {studentTotalPoints}
                                         </p>
-                                        <p className="text-sm text-gray-500 font-medium">Total Points</p>
+                                        <p className="text-sm text-gray-500 font-medium">Overall Points</p>
                                     </div>
                                     <div className="p-3 bg-white rounded-lg shadow-sm border border-indigo-300">
                                         <p className="text-3xl font-extrabold text-yellow-600 flex justify-center items-center">
@@ -202,22 +284,22 @@ const App = () => {
                                     <div key={index} className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded-lg shadow-sm transition duration-150 hover:shadow-md">
                                         <div className="flex flex-col text-left overflow-hidden">
                                             <p className="font-medium text-gray-900 truncate">
-                                                {result.program}
+                                                {result['Name of Program']}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                <span className="font-semibold">Position:</span> {result.position}
+                                                <span className="font-semibold">Position:</span> {result['Position']}
                                             </p>
                                         </div>
                                         <div className="flex items-center space-x-3 flex-shrink-0">
                                             {/* Grade Display */}
-                                            {result.grade && (
-                                                <div className={`p-1.5 rounded-full text-white text-xs font-bold w-7 h-7 flex items-center justify-center ${GRADE_MAP[result.grade] || 'bg-gray-400'}`}>
-                                                    G{result.grade}
+                                            {result['Grade'] && (
+                                                <div className={`p-1.5 rounded-full text-white text-xs font-bold w-7 h-7 flex items-center justify-center ${GRADE_MAP[result['Grade']] || 'bg-gray-400'}`}>
+                                                    {result['Grade']}
                                                 </div>
                                             )}
                                             {/* Points Display */}
                                             <div className="text-lg font-bold text-indigo-600 min-w-[50px] text-right">
-                                                +{result.points}
+                                                +{result['Total Points']}
                                             </div>
                                         </div>
                                     </div>
