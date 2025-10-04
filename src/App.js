@@ -1,364 +1,1022 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-// --- Icon components using inline SVG (since lucide-react or external libraries are not permitted) ---
-const HomeIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-);
-const PackageIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="m7.5 19.73 9-5.15"/><path d="M3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0z"/><path d="m22 8-7-4"/><path d="m11 12 1 6"/><path d="M12 18V6"/></svg>
-);
-const ShoppingCartIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
-);
-const UsersIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-);
-const MailIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.83 1.83 0 0 1-2.06 0L2 7"/></svg>
-);
-const TagIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l5.58-5.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
-);
-const CreditCardIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-);
-const ShieldIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
-);
+// --- Global Setup (Required for Canvas Environment) ---
+// These are included to satisfy the environment requirements,
+// but actual Firestore logic is skipped as per the prompt's request for "no backend"
+// and usage of localStorage for dummy data.
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+// --- End Global Setup ---
 
+// --- Utility Components & Functions ---
 
-// --- Mock Data ---
-const nfcProducts = [
-  { id: 1, name: "NFC Tag 213 Sticker", description: "Versatile, adhesive NFC tag for quick actions, URL sharing, and automation. Ideal for marketing campaigns.", capacity: "144 bytes", price: 0.50, icon: TagIcon },
-  { id: 2, name: "NFC 4K Card (PVC)", description: "High-capacity, durable credit-card sized NFC for complex data storage, loyalty, or access control systems.", capacity: "4KB", price: 1.20, icon: CreditCardIcon },
-  { id: 3, name: "Metal Shielded NFC", description: "Features ferrite shielding, ensuring reliable performance even when placed directly on metal surfaces.", capacity: "504 bytes", price: 1.80, icon: ShieldIcon },
+// Simple Icons (simulating lucide-react or similar) using SVG
+const Icon = ({ name, className = 'w-5 h-5' }) => {
+  const getIcon = () => {
+    switch (name) {
+      case 'user': return (<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>);
+      case 'mail': return (<><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.83 1.83 0 0 1-2.06 0L2 7" /></>);
+      case 'lock': return (<><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>);
+      case 'instagram': return (<><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 11.37 16 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.5" y1="6.5" y2="6.5" /></>);
+      case 'whatsapp': return (<><path d="M21 12.5H3" /><path d="M12.5 3v18" /></>); // Placeholder for WhatsApp
+      case 'linkedin': return (<><path d="M16 8a4 4 0 0 1 4 4v7H4v-7a4 4 0 0 1 4-4z" /><rect width="4" height="12" x="2" y="9" /><circle cx="4" cy="4" r="2" /></>);
+      case 'globe': return (<><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></>);
+      case 'briefcase': return (<><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>);
+      case 'menu': return (<><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></>);
+      case 'x': return (<><line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" /></>);
+      case 'check': return (<><path d="M20 6 9 17l-5-5" /></>);
+      case 'plus': return (<><line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" /></>);
+      case 'minus': return (<><line x1="5" x2="19" y1="12" y2="12" /></>);
+      case 'move': return (<><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><polyline points="15 19 12 22 9 19" /><polyline points="19 15 22 12 19 9" /><line x1="2" x2="22" y1="12" y2="12" /><line x1="12" x2="12" y1="2" y2="22" /></>);
+      case 'qrcode': return (<><rect width="4" height="4" x="3" y="3" rx="1" /><rect width="4" height="4" x="17" y="3" rx="1" /><rect width="4" height="4" x="3" y="17" rx="1" /><rect width="4" height="4" x="17" y="17" rx="1" /><line x1="11" x2="13" y1="11" y2="13" /></>);
+      case 'tap': return (<><path d="M8 12h.01" /><path d="M12 12h.01" /><path d="M16 12h.01" /><path d="M21 12c0-2.22-1.2-4.14-3-5.18l-1.42-3.08A2 2 0 0 0 14.37 3H9.63a2 2 0 0 0-1.21.74L7 7.82C5.2 8.86 4 10.78 4 13v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6Z" /></>);
+      case 'settings': return (<><path d="M12.22 2h-.44a2 2 0 0 0-2 1.76L9.5 7.15A2 2 0 0 1 7.87 8.1l-4.13.9a2 2 0 0 0-1.16 2.45L3.4 15.3A2 2 0 0 0 4.8 17l4.13.9a2 2 0 0 1 1.63.94l.27 1.4A2 2 0 0 0 12 22h.44a2 2 0 0 0 2-1.76l.33-1.4a2 2 0 0 1 1.63-.94l4.13-.9a2 2 0 0 0 1.4-1.7l-.07-2.73A2 2 0 0 0 20.1 8.1l-4.13-.9A2 2 0 0 1 14.5 7.15l-.28-1.4A2 2 0 0 0 12.22 2z" /><circle cx="12" cy="12" r="3" /></>);
+      default: return (<circle cx="12" cy="12" r="10" />);
+    }
+  };
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {getIcon()}
+    </svg>
+  );
+};
+
+const SOCIAL_LINKS = [
+  { id: 'website', name: 'Website', icon: 'globe', placeholder: 'https://yourwebsite.com' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'linkedin', placeholder: 'https://linkedin.com/in/yourprofile' },
+  { id: 'instagram', name: 'Instagram', icon: 'instagram', placeholder: 'https://instagram.com/yourhandle' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: 'whatsapp', placeholder: '+1 555 123 4567' },
 ];
 
-const NAV_ITEMS = [
-  { name: 'Home', icon: HomeIcon, page: 'home' },
-  { name: 'Products', icon: PackageIcon, page: 'products' },
-  { name: 'Order', icon: ShoppingCartIcon, page: 'order' },
-  { name: 'About Us', icon: UsersIcon, page: 'about' },
-  { name: 'Contact', icon: MailIcon, page: 'contact' },
-];
+const THEMES = {
+  minimal: { name: 'Minimal', icon: 'check', preview: 'bg-white text-gray-800' },
+  glass: { name: 'Glass', icon: 'user', preview: 'bg-indigo-200/50 backdrop-blur-md text-white' },
+  gradient: { name: 'Gradient', icon: 'briefcase', preview: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white' },
+};
 
-// --- Utility Components ---
+// Default profile data
+const defaultProfile = {
+  name: "Jane Doe",
+  jobTitle: "NFC Innovation Manager",
+  bio: "Connecting the world, one tap at a time. Let's exchange details seamlessly.",
+  profileImageUrl: 'https://placehold.co/150x150/4f46e5/ffffff?text=JD',
+  links: [
+    { id: 'website', type: 'website', value: 'https://connectech.com', isActive: true },
+    { id: 'linkedin', type: 'linkedin', value: 'https://linkedin.com/in/janedoe', isActive: true },
+  ],
+  theme: 'gradient',
+  username: 'janedoe',
+  taps: 1450,
+};
 
-const PrimaryButton = ({ children, onClick, className = '' }) => (
-  <button
-    onClick={onClick}
-    className={`w-full md:w-auto px-6 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 ease-in-out transform hover:scale-[1.02] active:scale-95 ${className}`}
+// --- Local Storage Auth/Data Functions ---
+const storageKey = (key) => `nfc_app_${key}_${appId}`;
+const LS_USERS = storageKey('users');
+const LS_SESSION = storageKey('session');
+const LS_PROFILES = storageKey('profiles');
+
+const getStoredUsers = () => {
+  try {
+    const users = JSON.parse(localStorage.getItem(LS_USERS));
+    return users || { 'test@example.com': { password: 'password', username: 'testuser', id: '123' } };
+  } catch (e) {
+    console.error("Error loading users from localStorage", e);
+    return { 'test@example.com': { password: 'password', username: 'testuser', id: '123' } };
+  }
+};
+
+const getStoredProfiles = () => {
+  try {
+    const profiles = JSON.parse(localStorage.getItem(LS_PROFILES));
+    return profiles || { 'testuser': { ...defaultProfile, username: 'testuser' }, 'janedoe': defaultProfile };
+  } catch (e) {
+    console.error("Error loading profiles from localStorage", e);
+    return { 'testuser': { ...defaultProfile, username: 'testuser' }, 'janedoe': defaultProfile };
+  }
+};
+
+const setStoredProfiles = (profiles) => {
+  try {
+    localStorage.setItem(LS_PROFILES, JSON.stringify(profiles));
+  } catch (e) {
+    console.error("Error saving profiles to localStorage", e);
+  }
+};
+
+const setStoredUsers = (users) => {
+  try {
+    localStorage.setItem(LS_USERS, JSON.stringify(users));
+  } catch (e) {
+    console.error("Error saving users to localStorage", e);
+  }
+};
+
+const getSession = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LS_SESSION));
+  } catch (e) {
+    return null;
+  }
+};
+
+const setSession = (session) => {
+  try {
+    localStorage.setItem(LS_SESSION, JSON.stringify(session));
+  } catch (e) {
+    console.error("Error saving session to localStorage", e);
+  }
+};
+
+// --- Theme Components (Reusable for Dashboard Preview and Public Page) ---
+
+const CardButton = ({ icon, label, href, bgColor }) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className={`flex items-center justify-center w-full py-3 px-6 text-white font-semibold rounded-xl transition-transform duration-200 shadow-lg hover:shadow-xl active:scale-[0.98] ${bgColor}`}
   >
-    {children}
-  </button>
+    <Icon name={icon} className="w-5 h-5 mr-3" />
+    <span>{label}</span>
+  </a>
 );
 
-const SectionTitle = ({ children, className = '' }) => (
-  <h2 className={`text-4xl font-extrabold text-white mb-6 border-b-4 border-indigo-600 pb-2 inline-block ${className}`}>
-    {children}
-  </h2>
-);
-
-// --- Page Sections ---
-
-const HomeSection = ({ navigate }) => (
-  <div className="text-center p-6 sm:p-10">
-    <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl mb-12">
-      <h1 className="text-5xl sm:text-7xl font-black text-white leading-tight mb-4">
-        The Future is <span className="text-indigo-400">Tap-and-Go</span>.
-      </h1>
-      <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-        Revolutionize your business operations, marketing, and user experience with custom-programmed Near Field Communication (NFC) chips.
-      </p>
-      <PrimaryButton onClick={() => navigate('products')} className="mt-4">
-        Explore Our Chips
-      </PrimaryButton>
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left mt-12">
-      <FeatureCard
-        icon={PackageIcon}
-        title="Custom Solutions"
-        description="From NTAG213 to NTAG424, we source, program, and deliver the perfect chip for your specific use case."
-      />
-      <FeatureCard
-        icon={CreditCardIcon}
-        title="Bulk Orders & Pricing"
-        description="Benefit from competitive, scaled pricing models for large-volume orders with rapid fulfillment."
-      />
-      <FeatureCard
-        icon={ShieldIcon}
-        title="Quality & Reliability"
-        description="Every chip is tested and verified for data retention, read/write speed, and durability before shipment."
-      />
+const BaseProfileCard = ({ profile, className, children }) => (
+  <div className={`p-6 sm:p-8 w-full max-w-sm mx-auto shadow-2xl rounded-3xl text-center transition-all duration-300 ${className}`}>
+    <img
+      src={profile.profileImageUrl}
+      alt={`${profile.name} profile`}
+      className="w-28 h-28 object-cover rounded-full mx-auto mb-4 border-4 border-white/50 shadow-lg"
+      onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/150x150/374151/ffffff?text=No+Img'; }}
+    />
+    <h1 className="text-2xl font-bold mb-1">{profile.name}</h1>
+    <h2 className="text-md font-medium opacity-80 mb-3">{profile.jobTitle}</h2>
+    <p className="text-sm opacity-90 mb-6 italic">{profile.bio}</p>
+    <div className="space-y-4">
+      {children}
     </div>
   </div>
 );
 
-const FeatureCard = ({ icon: Icon, title, description }) => (
-  <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-indigo-700/50 hover:bg-gray-700 transition duration-300">
-    <Icon className="w-10 h-10 text-indigo-400 mb-4" />
-    <h3 className="text-2xl font-bold text-white mb-2">{title}</h3>
-    <p className="text-gray-400 text-base">{description}</p>
-  </div>
-);
+const MinimalTheme = ({ profile }) => {
+  const bgColor = 'bg-white';
+  const textColor = 'text-gray-800';
+  const buttonColor = 'bg-indigo-600 hover:bg-indigo-700';
+  const links = profile.links.filter(l => l.isActive);
 
-
-const ProductSection = ({ navigate }) => (
-  <div className="p-6 sm:p-10">
-    <SectionTitle>Our NFC Products</SectionTitle>
-    <p className="text-gray-300 mb-10 max-w-4xl">
-      We offer a selection of industry-leading NFC chips available in various formats (stickers, cards, keychains) and chip types. All products are fully customizable with your brand and data.
-    </p>
-
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {nfcProducts.map((product) => (
-        <ProductCard key={product.id} product={product} navigate={navigate} />
-      ))}
-    </div>
-
-    <div className="mt-12 text-center bg-gray-800 p-8 rounded-2xl shadow-xl">
-      <h3 className="text-3xl font-bold text-white mb-4">Need Customization?</h3>
-      <p className="text-gray-400 mb-6 max-w-3xl mx-auto">
-        We handle everything: custom printing, unique serialization, and complex NDEF data programming. Get exactly what you need.
-      </p>
-      <PrimaryButton onClick={() => navigate('order')}>
-        Start a Custom Order
-      </PrimaryButton>
-    </div>
-  </div>
-);
-
-const ProductCard = ({ product, navigate }) => {
-  const Icon = product.icon;
   return (
-    <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl border border-indigo-600/70">
-      <Icon className="w-12 h-12 text-indigo-400 mb-4" />
-      <h3 className="text-3xl font-bold text-white mb-2">{product.name}</h3>
-      <p className="text-indigo-400 font-medium mb-3">Capacity: {product.capacity}</p>
-      <p className="text-gray-400 mb-4 text-base h-20 overflow-hidden">{product.description}</p>
-      <div className="text-2xl font-bold text-white my-4">${product.price.toFixed(2)} <span className="text-sm font-normal text-gray-400">/ unit (in bulk)</span></div>
-      <PrimaryButton onClick={() => navigate('order')} className="mt-4 !py-2 !px-4">
-        Get Quote
-      </PrimaryButton>
+    <BaseProfileCard profile={profile} className={`${bgColor} ${textColor} border border-gray-100`}>
+      {links.map(link => {
+        const social = SOCIAL_LINKS.find(s => s.id === link.type);
+        if (!social) return null;
+        return (
+          <CardButton
+            key={link.id}
+            icon={social.icon}
+            label={social.name}
+            href={link.value}
+            bgColor={buttonColor}
+          />
+        );
+      })}
+    </BaseProfileCard>
+  );
+};
+
+const GlassTheme = ({ profile }) => {
+  const bgColor = 'bg-white/10 backdrop-blur-xl';
+  const textColor = 'text-white';
+  const buttonColor = 'bg-white/20 hover:bg-white/30 border border-white/30 shadow-none';
+  const links = profile.links.filter(l => l.isActive);
+
+  return (
+    <div className="p-4 sm:p-8 bg-black/50 min-h-screen flex items-center justify-center">
+      <BaseProfileCard profile={profile} className={`${bgColor} ${textColor} border border-white/20`}>
+        {links.map(link => {
+          const social = SOCIAL_LINKS.find(s => s.id === link.type);
+          if (!social) return null;
+          return (
+            <CardButton
+              key={link.id}
+              icon={social.icon}
+              label={social.name}
+              href={link.value}
+              bgColor={buttonColor}
+            />
+          );
+        })}
+      </BaseProfileCard>
     </div>
   );
 };
 
-const OrderSection = () => {
-  const [formData, setFormData] = useState({ chipType: '', quantity: '', customization: '', email: '' });
-  const [submissionStatus, setSubmissionStatus] = useState('');
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setSubmissionStatus('submitting');
-
-    // --- Placeholder for API/Firestore Submission Logic ---
-    const mockOrderDetails = {
-      ...formData,
-      timestamp: new Date().toISOString()
-    };
-    console.log("Submitting Order Request:", mockOrderDetails);
-
-    // Simulate API delay
-    setTimeout(() => {
-      setSubmissionStatus('success');
-      setFormData({ chipType: '', quantity: '', customization: '', email: '' });
-    }, 1500);
-  };
-
-  const InputField = ({ label, name, type = 'text', children, className = '' }) => (
-    <div className={`mb-4 ${className}`}>
-      <label htmlFor={name} className="block text-gray-300 text-sm font-bold mb-2">
-        {label}
-      </label>
-      {type === 'select' ? (
-        <select
-          id={name}
-          name={name}
-          value={formData[name]}
-          onChange={handleChange}
-          required
-          className="shadow appearance-none border-2 border-indigo-600/50 rounded-xl w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-900/80 transition duration-200"
-        >
-          {children}
-        </select>
-      ) : type === 'textarea' ? (
-        <textarea
-          id={name}
-          name={name}
-          value={formData[name]}
-          onChange={handleChange}
-          required
-          rows="4"
-          className="shadow appearance-none border-2 border-indigo-600/50 rounded-xl w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-900/80 transition duration-200"
-        />
-      ) : (
-        <input
-          id={name}
-          name={name}
-          type={type}
-          value={formData[name]}
-          onChange={handleChange}
-          required
-          className="shadow appearance-none border-2 border-indigo-600/50 rounded-xl w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-900/80 transition duration-200"
-        />
-      )}
-    </div>
-  );
+const GradientTheme = ({ profile }) => {
+  const bgColor = 'bg-gradient-to-br from-indigo-600 to-purple-700';
+  const textColor = 'text-white';
+  const cardBg = 'bg-white/20 backdrop-blur-sm';
+  const buttonColor = 'bg-white text-gray-800 hover:bg-gray-100 shadow-md';
+  const links = profile.links.filter(l => l.isActive);
 
   return (
-    <div className="p-6 sm:p-10 max-w-3xl mx-auto">
-      <SectionTitle className="!text-center">Place Your Custom Order</SectionTitle>
-      <p className="text-gray-300 mb-8 text-center">
-        Tell us about your project, and we'll get back to you with a competitive quote within one business day.
-      </p>
+    <div className={`p-4 sm:p-8 min-h-screen flex items-center justify-center ${bgColor}`}>
+      <BaseProfileCard profile={profile} className={`${cardBg} ${textColor} border-none`}>
+        {links.map(link => {
+          const social = SOCIAL_LINKS.find(s => s.id === link.type);
+          if (!social) return null;
+          return (
+            <CardButton
+              key={link.id}
+              icon={social.icon}
+              label={social.name}
+              href={link.value}
+              bgColor={buttonColor}
+            />
+          );
+        })}
+      </BaseProfileCard>
+    </div>
+  );
+};
 
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-indigo-700/50">
-        <form onSubmit={handleSubmit}>
-          <InputField label="Chip Type / Format" name="chipType" type="select">
-            <option value="" disabled>Select a product type...</option>
-            {nfcProducts.map(p => (
-              <option key={p.id} value={p.name}>{p.name}</option>
-            ))}
-            <option value="Custom">Other / Custom Requirement</option>
-          </InputField>
-          <InputField label="Quantity (Minimum 100)" name="quantity" type="number" />
-          <InputField label="Email Address" name="email" type="email" />
-          <InputField label="Customization & Data Requirements (Printing, NDEF programming, serialization, etc.)" name="customization" type="textarea" />
+const PreviewCard = ({ profile }) => {
+  switch (profile.theme) {
+    case 'minimal': return <MinimalTheme profile={profile} />;
+    case 'glass': return <GlassTheme profile={profile} />;
+    case 'gradient': return <GradientTheme profile={profile} />;
+    default: return <MinimalTheme profile={profile} />;
+  }
+};
 
-          <div className="mt-6">
-            <PrimaryButton type="submit" disabled={submissionStatus === 'submitting'}>
-              {submissionStatus === 'submitting' ? 'Submitting...' : 'Request a Quote'}
-            </PrimaryButton>
+// Simple QR Code SVG Placeholder (Simulating qrcode.react)
+const QRCodeSVG = ({ value, size = 150 }) => (
+  <svg viewBox="0 0 30 30" width={size} height={size} className="bg-white p-1 rounded-lg shadow-lg">
+    <rect x="0" y="0" width="30" height="30" fill="white" />
+    {/* Top Left Finder Pattern */}
+    <rect x="2" y="2" width="6" height="6" fill="#1e293b" />
+    <rect x="3" y="3" width="4" height="4" fill="white" />
+    <rect x="4" y="4" width="2" height="2" fill="#1e293b" />
+
+    {/* Top Right Finder Pattern */}
+    <rect x="22" y="2" width="6" height="6" fill="#1e293b" />
+    <rect x="23" y="3" width="4" height="4" fill="white" />
+    <rect x="24" y="4" width="2" height="2" fill="#1e293b" />
+
+    {/* Bottom Left Finder Pattern */}
+    <rect x="2" y="22" width="6" height="6" fill="#1e293b" />
+    <rect x="3" y="23" width="4" height="4" fill="white" />
+    <rect x="4" y="24" width="2" height="2" fill="#1e293b" />
+
+    {/* Data Dots (Simulated) */}
+    {[10, 11, 12, 13, 14, 15, 16, 17, 18].map(y =>
+      [10, 11, 12, 13, 14, 15, 16, 17, 18].map(x =>
+        (x + y) % 3 === 0 ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#1e293b" /> : null
+      )
+    )}
+  </svg>
+);
+
+
+// --- Routing Components ---
+
+const Navbar = ({ isLoggedIn, onNavigate, onLogout, onToggleAuth }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const navItemClass = "text-gray-700 hover:text-indigo-600 transition duration-150 py-2 sm:py-0";
+
+  const handleNav = (page, hash) => {
+    onNavigate(page, hash);
+    setIsOpen(false);
+  };
+
+  return (
+    <nav className="fixed w-full z-50 bg-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex-shrink-0">
+            <button onClick={() => handleNav('landing')} className="text-2xl font-extrabold text-indigo-600 tracking-tight">
+              Connect<span className="text-gray-900">Tap</span>
+            </button>
           </div>
-
-          {submissionStatus === 'success' && (
-            <div className="mt-4 p-4 text-center bg-green-700/30 text-green-300 rounded-xl font-semibold">
-              <span role="img" aria-label="Success">✅</span> Quote request submitted successfully! We will contact you shortly.
-            </div>
-          )}
-        </form>
-      </div>
-    </div>
-  );
-};
-
-
-const AboutSection = () => (
-  <div className="p-6 sm:p-10 max-w-4xl mx-auto">
-    <SectionTitle>About NFC Solutions Co.</SectionTitle>
-    <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-indigo-700/50 space-y-6">
-      <p className="text-lg text-gray-300">
-        Founded in 2024, NFC Solutions Co. was born from a passion for seamless, secure, and smart interactions. We saw a gap in the market for high-quality, fully customized, and reliably programmed NFC chips. Our mission is to empower businesses and creatives to bridge the digital and physical worlds with simple, powerful tap technology.
-      </p>
-
-      <h3 className="text-3xl font-bold text-indigo-400 pt-4">Our Commitment</h3>
-      <ul className="list-disc list-inside text-gray-400 space-y-2 pl-4">
-        <li><span className="text-white font-medium">Precision Programming:</span> Ensuring every chip works exactly as intended, every time.</li>
-        <li><span className="text-white font-medium">Ethical Sourcing:</span> Partnering only with certified suppliers for the highest-grade silicon and materials.</li>
-        <li><span className="text-white font-medium">Scalability:</span> Supporting projects from small prototypes (100 units) to massive deployments (1 million+ units).</li>
-      </ul>
-
-      <p className="text-lg text-gray-300 pt-4">
-        We believe that NFC is the next frontier in consumer engagement and operational efficiency. Let us be your partner in innovation.
-      </p>
-    </div>
-  </div>
-);
-
-const ContactSection = () => {
-  const [contactData, setContactData] = useState({ name: '', email: '', message: '' });
-  const [status, setStatus] = useState('');
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setContactData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setStatus('sending');
-
-    const mockContactDetails = {
-      ...contactData,
-      timestamp: new Date().toISOString()
-    };
-    console.log("Submitting Contact Form:", mockContactDetails);
-
-    // Simulate API delay
-    setTimeout(() => {
-      setStatus('sent');
-      setContactData({ name: '', email: '', message: '' });
-    }, 1500);
-  };
-
-  const ContactInput = ({ label, name, type = 'text' }) => (
-    <div className="mb-4">
-      <label htmlFor={name} className="block text-gray-300 text-sm font-bold mb-2">
-        {label}
-      </label>
-      {type === 'textarea' ? (
-        <textarea
-          id={name}
-          name={name}
-          value={contactData[name]}
-          onChange={handleChange}
-          required
-          rows="5"
-          className="shadow appearance-none border-2 border-indigo-600/50 rounded-xl w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-900/80 transition duration-200"
-        />
-      ) : (
-        <input
-          id={name}
-          name={name}
-          type={type}
-          value={contactData[name]}
-          onChange={handleChange}
-          required
-          className="shadow appearance-none border-2 border-indigo-600/50 rounded-xl w-full py-3 px-4 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-900/80 transition duration-200"
-        />
-      )}
-    </div>
-  );
-
-
-  return (
-    <div className="p-6 sm:p-10 max-w-3xl mx-auto">
-      <SectionTitle className="!text-center">Get In Touch</SectionTitle>
-      <p className="text-gray-300 mb-8 text-center">
-        Have questions about compatibility, bulk pricing, or a custom project? We are ready to assist.
-      </p>
-
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-indigo-700/50">
-        <div className="mb-8 space-y-2 text-center md:text-left">
-            <p className="text-gray-300">Email: <a href="mailto:sales@nfcsolutions.com" className="text-indigo-400 hover:text-indigo-300">sales@nfcsolutions.com</a></p>
-            <p className="text-gray-300">Phone: <a href="tel:+15551234567" className="text-indigo-400 hover:text-indigo-300">(555) 123-4567</a></p>
+          <div className="hidden sm:ml-6 sm:flex sm:space-x-8 items-center">
+            {isLoggedIn ? (
+              <>
+                <button onClick={() => handleNav('dashboard')} className={navItemClass}>Dashboard</button>
+                <button onClick={() => handleNav('admin')} className={navItemClass}>Admin</button>
+                <button onClick={onLogout} className="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold transition duration-150 shadow-md">
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => handleNav('landing', '#about')} className={navItemClass}>About</button>
+                <button onClick={() => handleNav('landing', '#works')} className={navItemClass}>How It Works</button>
+                <button onClick={() => handleNav('landing', '#pricing')} className={navItemClass}>Pricing</button>
+                <button onClick={() => handleNav('landing', '#contact')} className={navItemClass}>Contact</button>
+                <button onClick={() => onToggleAuth(true, 'login')} className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg font-semibold transition duration-150 shadow-md">
+                  Login
+                </button>
+                <button onClick={() => onToggleAuth(true, 'signup')} className="text-indigo-600 border border-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-lg font-semibold transition duration-150 ml-2">
+                  Buy Now
+                </button>
+              </>
+            )}
+          </div>
+          <div className="sm:hidden">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+            >
+              <Icon name={isOpen ? 'x' : 'menu'} className="block h-6 w-6" />
+            </button>
+          </div>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit}>
-          <ContactInput label="Your Name" name="name" />
-          <ContactInput label="Your Email" name="email" type="email" />
-          <ContactInput label="Your Message" name="message" type="textarea" />
+      {isOpen && (
+        <div className="sm:hidden border-t border-gray-100">
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            {isLoggedIn ? (
+              <>
+                <button onClick={() => handleNav('dashboard')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-indigo-50">Dashboard</button>
+                <button onClick={() => handleNav('admin')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-indigo-50">Admin</button>
+                <button onClick={onLogout} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-white bg-red-500 hover:bg-red-600 mt-2">Logout</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => handleNav('landing', '#about')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-indigo-50">About</button>
+                <button onClick={() => handleNav('landing', '#works')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-indigo-50">How It Works</button>
+                <button onClick={() => handleNav('landing', '#pricing')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-indigo-50">Pricing</button>
+                <button onClick={() => handleNav('landing', '#contact')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-indigo-50">Contact</button>
+                <button onClick={() => onToggleAuth(true, 'login')} className="block w-full text-center mt-2 px-3 py-2 rounded-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700">Login</button>
+                <button onClick={() => onToggleAuth(true, 'signup')} className="block w-full text-center mt-2 px-3 py-2 rounded-md text-base font-medium text-indigo-600 border border-indigo-600 hover:bg-indigo-50">Buy Now</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+};
 
-          <div className="mt-6">
-            <PrimaryButton type="submit" disabled={status === 'sending'}>
-              {status === 'sending' ? 'Sending...' : 'Send Message'}
-            </PrimaryButton>
+const Section = ({ id, title, subtitle, children }) => (
+  <section id={id} className="py-16 sm:py-24 bg-white">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-12">
+        <h2 className="text-sm font-semibold text-indigo-600 uppercase tracking-wider">{subtitle}</h2>
+        <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">{title}</p>
+      </div>
+      {children}
+    </div>
+  </section>
+);
+
+const LandingPage = ({ onToggleAuth }) => {
+  useEffect(() => {
+    // Handle hash scrolling for navigation
+    if (window.location.hash) {
+      const element = document.getElementById(window.location.hash.substring(1));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, []);
+
+  return (
+    <main className="pt-16">
+      {/* Hero Section */}
+      <div className="relative isolate overflow-hidden pt-14 bg-gray-900">
+        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:flex lg:items-center lg:gap-x-10 lg:px-8 lg:py-40">
+          <div className="mx-auto max-w-2xl lg:mx-0 lg:flex-auto">
+            <h1 className="mt-10 text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              Tap. Connect. Grow. <span className="text-indigo-400">The Ultimate NFC Business Card.</span>
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-gray-300">
+              Ditch the paper and switch to a smart, customizable digital profile. Instantly share your contact, social media, and more with just a tap.
+            </p>
+            <div className="mt-10 flex items-center gap-x-6">
+              <button
+                onClick={() => onToggleAuth(true, 'signup')}
+                className="rounded-xl bg-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400 transition transform duration-150 active:scale-[0.98]"
+              >
+                Buy Now
+              </button>
+              <button
+                onClick={() => onToggleAuth(true, 'login')}
+                className="text-lg font-semibold leading-6 text-white hover:text-indigo-400 transition"
+              >
+                Login <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+          <div className="mt-16 sm:mt-24 lg:mt-0 lg:flex-shrink-0 lg:flex-grow">
+            <div className="rounded-2xl bg-indigo-400/10 p-2 sm:p-4 ring-1 ring-white/10 shadow-2xl">
+              <PreviewCard profile={defaultProfile} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* About Section */}
+      <Section id="about" title="Smart Networking. Simplified." subtitle="About ConnectTap">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+          <div className="p-6 bg-gray-50 rounded-xl shadow-lg transition hover:shadow-xl">
+            <Icon name="briefcase" className="w-10 h-10 mx-auto mb-4 text-indigo-600" />
+            <h3 className="text-xl font-bold mb-2">Professional</h3>
+            <p className="text-gray-600">Leave a lasting, professional impression with dynamic digital profiles that update instantly.</p>
+          </div>
+          <div className="p-6 bg-gray-50 rounded-xl shadow-lg transition hover:shadow-xl">
+            <Icon name="settings" className="w-10 h-10 mx-auto mb-4 text-indigo-600" />
+            <h3 className="text-xl font-bold mb-2">Customizable</h3>
+            <p className="text-gray-600">Choose from stunning themes (Minimal, Glass, Gradient) and control every element of your profile.</p>
+          </div>
+          <div className="p-6 bg-gray-50 rounded-xl shadow-lg transition hover:shadow-xl">
+            <Icon name="tap" className="w-10 h-10 mx-auto mb-4 text-indigo-600" />
+            <h3 className="text-xl font-bold mb-2">Instant</h3>
+            <p className="text-gray-600">Share your details with a single tap—no apps or downloads needed by the recipient.</p>
+          </div>
+        </div>
+      </Section>
+
+      {/* How It Works Section */}
+      <Section id="works" title="Three Simple Steps" subtitle="How It Works" >
+        <div className="space-y-12 max-w-3xl mx-auto">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg mr-4 shadow-md">1</div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-1">Create Your Profile</h3>
+              <p className="text-gray-600">Sign up and use our intuitive dashboard to add your name, job title, bio, and all your social links.</p>
+            </div>
+          </div>
+          <div className="flex items-start">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg mr-4 shadow-md">2</div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-1">Link Your Card</h3>
+              <p className="text-gray-600">Receive your NFC-enabled card or sticker and link it to your newly created digital profile URL.</p>
+            </div>
+          </div>
+          <div className="flex items-start">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg mr-4 shadow-md">3</div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-1">Tap & Connect</h3>
+              <p className="text-gray-600">Tap your card against any compatible smartphone. Your profile instantly appears, ready to be saved!</p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Pricing Section */}
+      <Section id="pricing" title="Pick Your Perfect Plan" subtitle="Transparent Pricing" >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="p-8 bg-white border-2 border-indigo-100 rounded-3xl shadow-xl">
+            <h3 className="text-2xl font-bold text-gray-900">Basic</h3>
+            <p className="mt-4 text-gray-600">The perfect start for solopreneurs.</p>
+            <p className="mt-6 text-5xl font-extrabold text-gray-900">
+              $9 <span className="text-xl font-medium text-gray-500">/ card</span>
+            </p>
+            <ul className="mt-6 space-y-4 text-gray-600">
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-indigo-600 mr-2" /> One Digital Profile</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-indigo-600 mr-2" /> Minimal Theme Only</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-indigo-600 mr-2" /> Unlimited Taps</li>
+            </ul>
+            <button
+              onClick={() => onToggleAuth(true, 'signup')}
+              className="mt-8 w-full rounded-xl bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-md hover:bg-indigo-700 transition"
+            >
+              Get Started
+            </button>
           </div>
 
-          {status === 'sent' && (
-            <div className="mt-4 p-4 text-center bg-green-700/30 text-green-300 rounded-xl font-semibold">
-              <span role="img" aria-label="Success">📬</span> Your message has been sent. We'll be in touch!
+          <div className="relative p-8 bg-indigo-600 text-white rounded-3xl shadow-2xl scale-[1.05]">
+            <span className="absolute top-0 right-0 -mt-3 -mr-3 px-3 py-1 bg-yellow-400 text-gray-900 font-bold rounded-full text-sm shadow-md">Popular</span>
+            <h3 className="text-2xl font-bold">Pro</h3>
+            <p className="mt-4 opacity-80">Full customization for power networkers.</p>
+            <p className="mt-6 text-5xl font-extrabold">
+              $19 <span className="text-xl font-medium opacity-80">/ card</span>
+            </p>
+            <ul className="mt-6 space-y-4">
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-yellow-300 mr-2" /> All Themes Included</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-yellow-300 mr-2" /> Customizable QR Code</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-yellow-300 mr-2" /> Tap Analytics Dashboard</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-yellow-300 mr-2" /> Link Reordering</li>
+            </ul>
+            <button
+              onClick={() => onToggleAuth(true, 'signup')}
+              className="mt-8 w-full rounded-xl bg-white text-indigo-600 px-6 py-3 text-lg font-semibold shadow-md hover:bg-gray-100 transition"
+            >
+              Buy Pro
+            </button>
+          </div>
+
+          <div className="p-8 bg-gray-50 border-2 border-gray-200 rounded-3xl shadow-xl">
+            <h3 className="text-2xl font-bold text-gray-900">Team</h3>
+            <p className="mt-4 text-gray-600">Ideal for small businesses and teams.</p>
+            <p className="mt-6 text-5xl font-extrabold text-gray-900">
+              $49 <span className="text-xl font-medium text-gray-500">/ 5 cards</span>
+            </p>
+            <ul className="mt-6 space-y-4 text-gray-600">
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-indigo-600 mr-2" /> 5 Profile Licenses</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-indigo-600 mr-2" /> Centralized Billing</li>
+              <li className="flex items-center"><Icon name="check" className="w-5 h-5 text-indigo-600 mr-2" /> Dedicated Account Manager</li>
+            </ul>
+            <button
+              onClick={() => onToggleAuth(true, 'signup')}
+              className="mt-8 w-full rounded-xl border border-indigo-600 text-indigo-600 px-6 py-3 text-lg font-semibold hover:bg-indigo-50 transition"
+            >
+              Contact Sales
+            </button>
+          </div>
+        </div>
+      </Section>
+
+      {/* Contact Section */}
+      <Section id="contact" title="Get in Touch" subtitle="We're Here to Help">
+        <div className="max-w-xl mx-auto bg-gray-50 p-8 rounded-2xl shadow-xl border border-gray-100">
+          <form className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+              <input type="text" id="name" name="name" className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" placeholder="Your Name" />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+              <input type="email" id="email" name="email" className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label htmlFor="message" className="block text-sm font-medium text-gray-700">Message</label>
+              <textarea id="message" name="message" rows="4" className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" placeholder="How can we help you?" />
+            </div>
+            <button
+              type="submit"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+            >
+              Send Message
+            </button>
+          </form>
+        </div>
+      </Section>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-8 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm">&copy; 2024 ConnectTap. All rights reserved.</p>
+        </div>
+      </footer>
+    </main>
+  );
+};
+
+const AuthModal = ({ isOpen, type, onClose, onAuthSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Reset state when modal type changes
+    setEmail('');
+    setPassword('');
+    setUsername('');
+    setError('');
+  }, [type]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+    let users = getStoredUsers();
+    let profiles = getStoredProfiles();
+
+    if (type === 'login') {
+      const user = Object.values(users).find(u => u.email === email && u.password === password);
+      if (user) {
+        setSession({ email: user.email, username: user.username });
+        onAuthSuccess(user.username);
+      } else {
+        setError('Invalid email or password.');
+      }
+    } else if (type === 'signup') {
+      if (users[email]) {
+        setError('User already exists with this email.');
+        return;
+      }
+      if (Object.values(users).find(u => u.username === username)) {
+        setError('Username is already taken.');
+        return;
+      }
+
+      const newUser = { email, password, username, id: Date.now().toString() };
+      users[email] = newUser;
+      setStoredUsers(users);
+
+      // Create default profile for new user
+      profiles[username] = { ...defaultProfile, name: "New User", username: username, profileImageUrl: `https://placehold.co/150x150/f97316/ffffff?text=${username.substring(0,2).toUpperCase()}` };
+      setStoredProfiles(profiles);
+
+      setSession({ email, username });
+      onAuthSuccess(username);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl relative">
+        <button onClick={() => onClose()} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <Icon name="x" className="w-6 h-6" />
+        </button>
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+          {type === 'login' ? 'Welcome Back' : 'Create Account'}
+        </h2>
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4 text-sm" role="alert">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {type === 'signup' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Username</label>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                placeholder="yourusername"
+              />
             </div>
           )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+              placeholder="••••••••"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition transform duration-150 active:scale-[0.99]"
+          >
+            {type === 'login' ? 'Login' : 'Sign Up'}
+          </button>
         </form>
+        <div className="mt-6 text-center text-sm">
+          {type === 'login' ? (
+            <p>Don't have an account? <button onClick={() => onClose('signup')} className="font-medium text-indigo-600 hover:text-indigo-500">Sign Up</button></p>
+          ) : (
+            <p>Already have an account? <button onClick={() => onClose('login')} className="font-medium text-indigo-600 hover:text-indigo-500">Login</button></p>
+          )}
+        </div>
       </div>
+    </div>
+  );
+};
+
+const Dashboard = ({ userSession, onLogout }) => {
+  const [profiles, setProfiles] = useState(getStoredProfiles());
+  const [currentProfile, setCurrentProfile] = useState(profiles[userSession.username] || defaultProfile);
+  const [message, setMessage] = useState('');
+
+  // Update localStorage when currentProfile changes
+  useEffect(() => {
+    if (userSession.username && currentProfile) {
+      const newProfiles = { ...profiles, [userSession.username]: currentProfile };
+      setProfiles(newProfiles);
+      setStoredProfiles(newProfiles);
+    }
+  }, [currentProfile, userSession.username]);
+
+  // Handle simple input change for main details
+  const handleDetailChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentProfile(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle social link active/deactivate
+  const handleLinkToggle = (type) => {
+    setCurrentProfile(prev => {
+      const existingLink = prev.links.find(l => l.type === type);
+      if (existingLink) {
+        return {
+          ...prev,
+          links: prev.links.map(l =>
+            l.type === type ? { ...l, isActive: !l.isActive } : l
+          ),
+        };
+      } else {
+        const social = SOCIAL_LINKS.find(s => s.id === type);
+        return {
+          ...prev,
+          links: [...prev.links, { id: Date.now().toString(), type: social.id, value: social.placeholder, isActive: true }],
+        };
+      }
+    });
+  };
+
+  // Handle social link value change
+  const handleLinkValueChange = (id, value) => {
+    setCurrentProfile(prev => ({
+      ...prev,
+      links: prev.links.map(l => (l.id === id ? { ...l, value } : l)),
+    }));
+  };
+
+  // Handle reordering links (simple drag/drop simulation)
+  const moveLink = useCallback((dragIndex, hoverIndex) => {
+    setCurrentProfile(prev => {
+      const links = [...prev.links];
+      const draggedLink = links[dragIndex];
+      links.splice(dragIndex, 1);
+      links.splice(hoverIndex, 0, draggedLink);
+      return { ...prev, links };
+    });
+  }, []);
+
+  const handleSave = () => {
+    // Save is already handled in useEffect, this just provides feedback
+    setMessage('Profile settings saved successfully!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const socialLinksConfig = SOCIAL_LINKS.map(social => {
+    const link = currentProfile.links.find(l => l.type === social.id);
+    return {
+      ...social,
+      linkId: link?.id,
+      value: link?.value || social.placeholder,
+      isActive: link?.isActive || false,
+    };
+  });
+
+  return (
+    <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Dashboard</h1>
+        <p className="text-gray-600 mb-8">Manage your digital profile and tap-card settings.</p>
+
+        {message && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl relative mb-6">
+            <Icon name="check" className="w-5 h-5 inline mr-2" /> {message}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Column 1: Profile Editor */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center"><Icon name="user" className="mr-2 w-6 h-6 text-indigo-500" /> Basic Details</h2>
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-gray-700">Profile URL</span>
+                  <div className="mt-1 flex rounded-xl shadow-sm">
+                    <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                      connectech.com/u/
+                    </span>
+                    <input
+                      type="text"
+                      name="username"
+                      value={currentProfile.username}
+                      readOnly
+                      className="flex-1 block w-full rounded-r-xl border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-gray-100"
+                    />
+                  </div>
+                </label>
+                <label className="block">
+                  <span className="text-gray-700">Profile Image URL</span>
+                  <input
+                    type="url"
+                    name="profileImageUrl"
+                    value={currentProfile.profileImageUrl}
+                    onChange={handleDetailChange}
+                    className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    placeholder="https://image-link.com/photo.jpg"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-gray-700">Full Name</span>
+                  <input
+                    type="text"
+                    name="name"
+                    value={currentProfile.name}
+                    onChange={handleDetailChange}
+                    className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    placeholder="Jane Doe"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-gray-700">Job Title</span>
+                  <input
+                    type="text"
+                    name="jobTitle"
+                    value={currentProfile.jobTitle}
+                    onChange={handleDetailChange}
+                    className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    placeholder="Head of Digital Strategy"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-gray-700">Bio/Slogan</span>
+                  <textarea
+                    name="bio"
+                    value={currentProfile.bio}
+                    onChange={handleDetailChange}
+                    rows="3"
+                    className="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    placeholder="Connecting the world, one tap at a time."
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Social Links Editor */}
+            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center"><Icon name="globe" className="mr-2 w-6 h-6 text-indigo-500" /> Social Links</h2>
+              <div className="space-y-4">
+                {socialLinksConfig.filter(s => s.isActive).map((social, index) => (
+                  <div key={social.linkId} className="flex flex-col sm:flex-row items-center bg-gray-50 p-3 rounded-xl border border-gray-100 transition duration-150 shadow-sm">
+                    <div className="flex items-center w-full sm:w-10 mb-2 sm:mb-0">
+                        <button
+                          type="button"
+                          className="text-gray-400 hover:text-indigo-600 cursor-move mr-2"
+                        >
+                          <Icon name="move" className="w-5 h-5" />
+                        </button>
+                        <span className="font-semibold text-gray-700 flex items-center">
+                          <Icon name={social.icon} className="w-4 h-4 mr-2" />
+                          {social.name}
+                        </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={currentProfile.links.find(l => l.type === social.id)?.value || ''}
+                      onChange={(e) => handleLinkValueChange(social.linkId, e.target.value)}
+                      className="w-full sm:flex-1 block rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 p-2 text-sm border my-2 sm:my-0 sm:mx-4"
+                      placeholder={social.placeholder}
+                    />
+                    <button
+                      onClick={() => handleLinkToggle(social.id)}
+                      className="flex-shrink-0 text-red-500 hover:text-red-700 p-2 rounded-lg transition"
+                    >
+                      <Icon name="minus" className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+                <div className="pt-4 border-t border-gray-100">
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">Add New Link</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {SOCIAL_LINKS.filter(s => !socialLinksConfig.find(sc => sc.id === s.id)?.isActive).map(social => (
+                      <button
+                        key={social.id}
+                        onClick={() => handleLinkToggle(social.id)}
+                        className="flex items-center justify-center p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition text-sm font-medium shadow-sm"
+                      >
+                        <Icon name="plus" className="w-4 h-4 mr-1" /> {social.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Theme Selector */}
+            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center"><Icon name="settings" className="mr-2 w-6 h-6 text-indigo-500" /> Theme Selection</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {Object.entries(THEMES).map(([id, theme]) => (
+                  <button
+                    key={id}
+                    onClick={() => setCurrentProfile(prev => ({ ...prev, theme: id }))}
+                    className={`p-4 rounded-xl text-left transition duration-200 border-4 ${currentProfile.theme === id ? 'border-indigo-500 shadow-lg' : 'border-gray-100 hover:border-indigo-300'}`}
+                    style={{ backgroundColor: id === 'glass' ? '#2c3e50' : (id === 'gradient' ? '#4f46e5' : '#ffffff') }}
+                  >
+                    <div className={`${theme.preview} p-4 rounded-lg text-xs font-semibold`}>
+                      {theme.name}
+                    </div>
+                    <p className={`mt-2 text-sm font-semibold ${id === 'glass' || id === 'gradient' ? 'text-white' : 'text-gray-800'}`}>{theme.name}</p>
+                    <p className={`text-xs ${id === 'glass' || id === 'gradient' ? 'text-indigo-200' : 'text-gray-500'}`}>{currentProfile.theme === id ? 'Active' : 'Select'}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleSave}
+              className="w-full py-4 px-6 bg-indigo-600 text-white text-xl font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition transform active:scale-[0.99]"
+            >
+              Save Profile Changes
+            </button>
+          </div>
+
+          {/* Column 2: Live Preview & Analytics */}
+          <div className="lg:col-span-1 space-y-8 sticky top-20">
+            {/* Live Preview */}
+            <div className="p-4 bg-gray-200 rounded-2xl shadow-inner border border-gray-300">
+              <h2 className="text-xl font-bold text-gray-700 mb-3 text-center">Live Preview</h2>
+              <div className="w-full h-auto">
+                <PreviewCard profile={currentProfile} />
+              </div>
+            </div>
+
+            {/* Analytics & Tools */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl space-y-6">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center"><Icon name="tap" className="mr-2 w-6 h-6 text-indigo-500" /> Tap Analytics</h2>
+              <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-xl">
+                <span className="text-lg font-medium text-gray-700">Total Profile Taps</span>
+                <span className="text-3xl font-extrabold text-indigo-600">{currentProfile.taps.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-xl space-y-6">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center"><Icon name="qrcode" className="mr-2 w-6 h-6 text-indigo-500" /> QR Code Share</h2>
+              <div className="flex justify-center">
+                <QRCodeSVG value={`connectech.com/u/${currentProfile.username}`} />
+              </div>
+              <p className="text-center text-sm text-gray-500 mt-3">Scan to share your profile instantly.</p>
+            </div>
+
+            {/* Subscription UI (Mock) */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-green-500">
+              <h2 className="text-xl font-bold text-green-700 mb-3 flex items-center"><Icon name="check" className="mr-2 w-6 h-6" /> Pro Subscription</h2>
+              <p className="text-sm text-gray-600">Your current plan is **Pro**. Access all themes and analytics.</p>
+              <button className="mt-4 w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                Manage Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AdminPage = ({ onNavigate }) => {
+  const users = getStoredUsers();
+
+  return (
+    <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-8">Admin Panel</h1>
+
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Registered Users ({Object.keys(users).length})</h2>
+          <ul className="divide-y divide-gray-200">
+            {Object.values(users).map(user => (
+              <li key={user.id} className="py-4 flex justify-between items-center hover:bg-gray-50 transition px-2 rounded-lg">
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">{user.username}</p>
+                  <p className="text-sm text-gray-500">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => onNavigate('public', user.username)}
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                >
+                  View Profile
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PublicProfilePage = ({ username }) => {
+  const profiles = getStoredProfiles();
+  const profile = profiles[username];
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center p-4">
+        <h1 className="text-4xl font-extrabold text-red-500 mb-4">404 - Profile Not Found</h1>
+        <p className="text-lg text-gray-600">The user '<span className="font-mono bg-gray-100 p-1 rounded">{username}</span>' does not exist.</p>
+        <a href="/" className="mt-8 text-indigo-600 hover:text-indigo-500 font-medium">Go back to homepage</a>
+      </div>
+    );
+  }
+
+  // Render the chosen theme component
+  return (
+    <div className="min-h-screen">
+      <PreviewCard profile={profile} />
     </div>
   );
 };
@@ -366,108 +1024,128 @@ const ContactSection = () => {
 
 // --- Main App Component ---
 
-const AppHeader = ({ currentPage, navigate }) => (
-  <header className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm shadow-2xl z-50 md:sticky md:top-0 md:border-b-4 md:border-indigo-600/50">
-    {/* Mobile Navigation (Bottom Bar) */}
-    <nav className="flex justify-around items-center h-16 md:hidden">
-      {NAV_ITEMS.map(({ name, icon: Icon, page }) => (
-        <button
-          key={page}
-          onClick={() => navigate(page)}
-          className={`flex flex-col items-center justify-center p-1 w-full h-full transition-colors duration-200
-            ${currentPage === page ? 'text-indigo-400' : 'text-gray-400 hover:text-white'}`
-          }
-        >
-          <Icon className="w-6 h-6" />
-          <span className="text-xs font-medium mt-1">{name}</span>
-        </button>
-      ))}
-    </nav>
+const App = () => {
+  const [currentPage, setCurrentPage] = useState('landing'); // 'landing', 'dashboard', 'admin', 'public'
+  const [currentUsername, setCurrentUsername] = useState(null); // Used for public profile view
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authType, setAuthType] = useState('login'); // 'login' or 'signup'
+  const [userSession, setUserSession] = useState(null);
 
-    {/* Desktop Navigation (Top Bar) */}
-    <div className="hidden md:flex justify-between items-center max-w-7xl mx-auto px-6 py-4">
-        <h1 className="text-3xl font-black text-white flex items-center">
-            NFC <span className="text-indigo-400 ml-1">SOLUTIONS</span>
-        </h1>
-        <nav className="flex space-x-6">
-            {NAV_ITEMS.map(({ name, page }) => (
-                <button
-                    key={page}
-                    onClick={() => navigate(page)}
-                    className={`text-lg font-semibold border-b-2 py-1 transition-all duration-300
-                        ${currentPage === page
-                            ? 'text-indigo-400 border-indigo-400'
-                            : 'text-gray-300 border-transparent hover:border-white hover:text-white'
-                        }`
-                    }
-                >
-                    {name}
-                </button>
-            ))}
-        </nav>
-    </div>
-  </header>
-);
+  // 1. Initialize Auth State from Local Storage on Load
+  useEffect(() => {
+    const session = getSession();
+    if (session && session.username) {
+      setUserSession(session);
+      // If a session exists, default to dashboard
+      setCurrentPage('dashboard');
+    }
 
-const AppFooter = () => (
-    <footer className="bg-gray-900 border-t border-indigo-600/30 p-8 text-center mt-12">
-        <div className="max-w-7xl mx-auto">
-            <p className="text-gray-400 text-sm mb-4">
-                © {new Date().getFullYear()} NFC Solutions Co. All rights reserved.
-            </p>
-            <div className="flex justify-center space-x-4">
-                <button className="text-gray-500 hover:text-indigo-400 transition-colors">Privacy Policy</button>
-                <button className="text-gray-500 hover:text-indigo-400 transition-colors">Terms of Service</button>
-            </div>
-        </div>
-    </footer>
-);
+    // Set up dummy auth for the canvas environment
+    // In a real app, this is where you'd sign in with the custom token:
+    // if (initialAuthToken) { signInWithCustomToken(auth, initialAuthToken); }
+  }, []);
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+  // 2. Handle State-based Routing (URL Simulation)
+  useEffect(() => {
+    const path = window.location.hash.substring(1);
+    const publicMatch = path.match(/^u\/(.+)$/);
 
-  const navigate = (page) => {
+    if (publicMatch) {
+      setCurrentPage('public');
+      setCurrentUsername(publicMatch[1]);
+    } else if (userSession) {
+      if (path === 'admin') {
+        setCurrentPage('admin');
+      } else if (path === 'dashboard') {
+        setCurrentPage('dashboard');
+      } else {
+        setCurrentPage('dashboard'); // Default after login
+      }
+    } else {
+      setCurrentPage('landing');
+    }
+  }, [userSession]);
+
+  // Handle URL changes via hash (for public link sharing simulation)
+  const handleNavigate = (page, param) => {
+    let newHash = '';
+    if (page === 'public' && param) {
+      newHash = `u/${param}`;
+      setCurrentUsername(param);
+    } else if (page === 'landing' && param) {
+      newHash = param; // #about, #pricing, etc.
+    } else if (page === 'landing') {
+      newHash = '';
+    } else {
+      newHash = page; // dashboard or admin
+    }
+
+    window.location.hash = newHash;
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const renderSection = useMemo(() => {
-    switch (currentPage) {
-      case 'home':
-        return <HomeSection navigate={navigate} />;
-      case 'products':
-        return <ProductSection navigate={navigate} />;
-      case 'order':
-        return <OrderSection />;
-      case 'about':
-        return <AboutSection />;
-      case 'contact':
-        return <ContactSection />;
-      default:
-        return <HomeSection navigate={navigate} />;
+  const handleToggleAuth = (isOpen, type = 'login') => {
+    setIsAuthModalOpen(isOpen);
+    if (isOpen) {
+      setAuthType(type);
     }
-  }, [currentPage]);
+  };
+
+  const handleAuthSuccess = (username) => {
+    const session = getSession();
+    setUserSession(session);
+    setIsAuthModalOpen(false);
+    handleNavigate('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(LS_SESSION);
+    setUserSession(null);
+    handleNavigate('landing');
+  };
+
+  const renderPage = () => {
+    if (currentPage === 'public') {
+      return <PublicProfilePage username={currentUsername} />;
+    }
+    if (!userSession) {
+      return <LandingPage onToggleAuth={handleToggleAuth} />;
+    }
+
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard userSession={userSession} onLogout={handleLogout} />;
+      case 'admin':
+        return <AdminPage onNavigate={handleNavigate} />;
+      default:
+        return <Dashboard userSession={userSession} onLogout={handleLogout} />;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-950 font-sans text-gray-100 antialiased">
-      {/* Tailwind CSS Script for dynamic loading */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      {/* Removed the problematic <style> block that was causing compiler errors.
-        The necessary styling for mobile navigation offset is now handled using Tailwind classes.
-      */}
-      
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-      <AppHeader currentPage={currentPage} navigate={navigate} />
-
-      {/* Applying padding-bottom (pb-16 = 4rem) only on mobile devices to prevent content 
-          from being hidden behind the fixed bottom navigation bar, and unsetting it (md:pb-0) on desktop. */}
-      <main className="max-w-7xl mx-auto pb-16 md:pb-0">
-        {renderSection}
-      </main>
-
-      <AppFooter />
+    <div className="font-sans antialiased min-h-screen">
+      <Navbar
+        isLoggedIn={!!userSession}
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+        onToggleAuth={handleToggleAuth}
+      />
+      {renderPage()}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        type={authType}
+        onClose={(newType) => {
+          if (newType) {
+            setAuthType(newType);
+          } else {
+            setIsAuthModalOpen(false);
+          }
+        }}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
-}
+};
+
+export default App;
 
